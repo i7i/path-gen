@@ -45,28 +45,28 @@ impl Chart {
     }
 
     #[cfg(test)]
-    pub(crate) fn to_string(&self) -> String {
+    pub(crate) fn to_string(&self) -> Result<String> {
         let mut svg_string = String::new();
 
         let horizontal = Horizontal::new()
             .x_range(self.x_range[0], self.x_range[1])
             .y_range(self.y_range[0], self.y_range[1])
             .lines(self.h_lines)
-            .tags()
+            .tags()?
             .to_string();
 
         let vertical = Vertical::new()
             .x_range(self.x_range[0], self.x_range[1])
             .y_range(self.y_range[0], self.y_range[1])
             .lines(self.h_lines)
-            .tags()
+            .tags()?
             .to_string();
 
         svg_string.push_str(&horizontal);
         svg_string.push_str("\n");
         svg_string.push_str(&vertical);
 
-        svg_string
+        Ok(svg_string)
     }
 
     pub(crate) fn write(&self, out: Option<&Path>) -> Result<()> {
@@ -74,17 +74,15 @@ impl Chart {
             .x_range(self.x_range[0], self.x_range[1])
             .y_range(self.y_range[0], self.y_range[1])
             .lines(self.h_lines)
-            .tags()
-            .write(out)
-            .unwrap();
+            .tags()?
+            .write(out)?;
 
         Vertical::new()
             .x_range(self.x_range[0], self.x_range[1])
             .y_range(self.y_range[0], self.y_range[1])
             .lines(self.h_lines)
-            .tags()
-            .write(out)
-            .unwrap();
+            .tags()?
+            .write(out)?;
 
         Ok(())
     }
@@ -95,7 +93,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn build_chart() {
+    fn build_chart() -> Result<()> {
         let x = (120.0, 1500.0);
         let y = (10.0, 360.0);
 
@@ -104,7 +102,7 @@ mod tests {
             .y_range(y.0, y.1)
             .h_lines(5)
             .v_lines(5)
-            .to_string();
+            .to_string()?;
 
         let horizontal_tags = format!("<svg xmlns=\"http://www.w3.org/2000/svg\">\n\
             <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
@@ -138,5 +136,6 @@ mod tests {
         want.push_str(&vertical_tags);
 
         assert_eq!(want, have);
+        Ok(())
     }
 }

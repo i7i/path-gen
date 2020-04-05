@@ -6,6 +6,10 @@ pub enum Error {
         io_error: std::io::Error,
         path: PathBuf,
     },
+    LineNumber,
+    StdIoError {
+        io_error: std::io::Error,
+    },
 }
 
 impl Display for Error {
@@ -16,6 +20,8 @@ impl Display for Error {
             IoError { io_error, path } => {
                 write!(f, "I/O error at `{}`: {}", path.display(), io_error)
             }
+            LineNumber => write!(f, "Number of chart lines must be greater than 2.",),
+            StdIoError { io_error } => write!(f, "Error when writing to `std::out`: {}", io_error),
         }
     }
 }
