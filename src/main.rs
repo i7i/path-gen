@@ -24,7 +24,7 @@ fn write(document: &SvgDocument, out: Option<&Path>) -> Result<()> {
             path: path.into(),
         })?;
     } else {
-        writeln!(io::stdout(), "{:?}", &document.to_string()).unwrap();
+        writeln!(io::stdout(), "{}", &document.to_string()).unwrap();
     }
 
     Ok(())
