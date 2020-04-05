@@ -10,6 +10,6 @@ pub(crate) use svg::{
     Document as SvgDocument,
 };
 
-pub(crate) use crate::{error::Error, horizontal::Horizontal, point::Point};
+pub(crate) use crate::{error::Error, horizontal::Horizontal, point::Point, vertical::Vertical};
 
 pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
