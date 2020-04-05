@@ -1,22 +1,44 @@
 pub(crate) use crate::common::*;
 
 pub(crate) struct Vertical {
-    range: (Point, Point),
-    num_lines: u8,
+    x_range: [f32; 2],
+    y_range: [f32; 2],
+    lines: u8,
     pub(crate) tags: SvgDocument,
 }
 
 impl Vertical {
-    pub(crate) fn new(range: (Point, Point), num_lines: u8) -> Self {
+    pub(crate) fn new() -> Self {
         let tags = SvgDocument::new();
+        let lines = 0;
+        let x_range = [0.0; 2];
+        let y_range = [0.0; 2];
         Vertical {
-            range,
-            num_lines,
+            x_range,
+            y_range,
+            lines,
             tags,
         }
     }
 
-    pub fn get_tags(&mut self) -> Result<()> {
+    pub(crate) fn x_range<'a>(&'a mut self, x0: f32, x1: f32) -> &'a mut Vertical {
+        self.x_range[0] = x0;
+        self.x_range[1] = x1;
+        self
+    }
+
+    pub(crate) fn y_range<'a>(&'a mut self, y0: f32, y1: f32) -> &'a mut Vertical {
+        self.y_range[0] = y0;
+        self.y_range[1] = y1;
+        self
+    }
+
+    pub(crate) fn lines<'a>(&'a mut self, n: u8) -> &'a mut Vertical {
+        self.lines = n;
+        self
+    }
+
+    pub(crate) fn tags<'a>(&'a mut self) -> &'a mut Vertical {
         let x_coordinates = self.coordinates().unwrap();
         let mut tmp_document = SvgDocument::new();
         for x in x_coordinates {
@@ -24,6 +46,27 @@ impl Vertical {
             tmp_document = tmp_document.add(path);
         }
         self.tags = tmp_document;
+        self
+    }
+
+    pub(crate) fn to_string(&self) -> String {
+        self.tags.to_string()
+    }
+
+    pub(crate) fn write(&self, out: Option<&Path>) -> Result<()> {
+        if let Some(path) = out {
+            let buffer = File::create(path).map_err(|io_error| Error::IoError {
+                io_error,
+                path: path.into(),
+            })?;
+            svg::write(buffer, &self.tags).map_err(|io_error| Error::IoError {
+                io_error,
+                path: path.into(),
+            })?;
+        } else {
+            writeln!(io::stdout(), "{}", self.to_string()).unwrap();
+        }
+
         Ok(())
     }
 
@@ -31,22 +74,22 @@ impl Vertical {
         let segment = self.delta()?;
 
         let mut lines = Vec::new();
-        for i in 0..self.num_lines - 1 {
-            let tmp = self.range.0.x + (segment * i as f32);
+        for i in 0..self.lines - 1 {
+            let tmp = self.x_range[0] + (segment * i as f32);
             lines.push(tmp);
         }
-        lines.push(self.range.1.x);
+        lines.push(self.x_range[1]);
         Ok(lines)
     }
 
     fn delta(&self) -> Result<f32, ()> {
-        Ok((self.range.1.x - self.range.0.x).abs() / (self.num_lines - 1) as f32)
+        Ok((self.x_range[1] - self.x_range[0]).abs() / (self.lines - 1) as f32)
     }
 
     fn get_path(&self, x: f32) -> Result<SvgPath> {
         let data = SvgData::new()
-            .move_to((x, self.range.0.y))
-            .line_to((x, self.range.1.y));
+            .move_to((x, self.y_range[0]))
+            .line_to((x, self.y_range[1]));
         Ok(SvgPath::new()
             .set("stroke", "#BFEFF2")
             .set("stroke-width", 1)
@@ -62,89 +105,101 @@ mod tests {
 
     #[test]
     fn segment_width_btwn_3_lines() {
-        let points = (Point::new(120.0, 10.0), Point::new(1500.0, 360.0));
-        let vertical = Vertical::new(points, 3);
-        let have = vertical.delta().unwrap();
+        let x = (120.0, 1500.0);
+        let y = (10.0, 360.0);
+
+        let have = Vertical::new()
+            .x_range(x.0, x.1)
+            .y_range(y.0, y.1)
+            .lines(3)
+            .delta()
+            .unwrap();
 
         let want = 690.0;
+
         assert_eq!(want, have);
     }
 
     #[test]
     fn segment_width_btwn_5_lines() {
-        let points = (Point::new(120.0, 10.0), Point::new(1500.0, 360.0));
-        let vertical = Vertical::new(points, 5);
-        let have = vertical.delta().unwrap();
+        let x = (120.0, 1500.0);
+        let y = (10.0, 360.0);
+
+        let have = Vertical::new()
+            .x_range(x.0, x.1)
+            .y_range(y.0, y.1)
+            .lines(5)
+            .delta()
+            .unwrap();
 
         let want = 345.0;
+
         assert_eq!(want, have);
     }
 
     #[test]
     fn x_coords_of_3_lines() {
-        let points = (Point::new(120.0, 10.0), Point::new(1500.0, 360.0));
-        let vertical = Vertical::new(points, 3);
-        let have = vertical.coordinates().unwrap();
+        let x = (120.0, 1500.0);
+        let y = (10.0, 360.0);
+
+        let have = Vertical::new()
+            .x_range(x.0, x.1)
+            .y_range(y.0, y.1)
+            .lines(3)
+            .coordinates()
+            .unwrap();
 
         let want = vec![120.0, 810.0, 1500.0];
+
         assert_eq!(want, have);
     }
 
     #[test]
     fn x_coords_of_5_lines() {
-        let points = (Point::new(120.0, 10.0), Point::new(1500.0, 360.0));
-        let vertical = Vertical::new(points, 5);
-        let have = vertical.coordinates().unwrap();
+        let x = (120.0, 1500.0);
+        let y = (10.0, 360.0);
+
+        let have = Vertical::new()
+            .x_range(x.0, x.1)
+            .y_range(y.0, y.1)
+            .lines(5)
+            .coordinates()
+            .unwrap();
 
         let want = vec![120.0, 465.0, 810.0, 1155.0, 1500.0];
+
         assert_eq!(want, have);
     }
 
     #[test]
-    fn generates_svg_paths() {
-        let points = (Point::new(120.0, 10.0), Point::new(1500.0, 360.0));
-        let mut vertical = Vertical::new(points, 5);
+    fn generates_svg_path() {
+        let x = (120.0, 1500.0);
+        let y = (10.0, 360.0);
 
-        let tmp_document = SvgDocument::new();
-        let path0 = vertical.get_path(120.0).unwrap();
-        let tmp_document = tmp_document.add(path0);
+        let have = Vertical::new()
+            .x_range(x.0, x.1)
+            .y_range(y.0, y.1)
+            .lines(5)
+            .get_path(120.0)
+            .unwrap()
+            .to_string();
 
-        let path1 = vertical.get_path(465.0).unwrap();
-        let tmp_document = tmp_document.add(path1);
-
-        let path2 = vertical.get_path(810.0).unwrap();
-        let tmp_document = tmp_document.add(path2);
-
-        let path3 = vertical.get_path(1155.0).unwrap();
-        let tmp_document = tmp_document.add(path3);
-
-        let path4 = vertical.get_path(1500.0).unwrap();
-        let tmp_document = tmp_document.add(path4);
-
-        vertical.tags = tmp_document;
-        let have = vertical.tags.to_string();
-
-        let want = format!("<svg xmlns=\"http://www.w3.org/2000/svg\">\n\
-            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
-            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
-            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
-            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
-            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
-            </svg>",
-            120,  10, 120,  360,
-            465,  10, 465,  360,
-            810,  10, 810,  360,
-            1155, 10, 1155, 360,
-            1500, 10, 1500, 360);
+        let want = format!("<path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>",
+            x.0, y.0, x.0, y.1);
 
         assert_eq!(want, have);
     }
 
     #[test]
     fn generates_svg_tags() {
-        let points = (Point::new(120.0, 10.0), Point::new(1500.0, 360.0));
-        let mut vertical = Vertical::new(points, 5);
-        vertical.get_tags().unwrap();
+        let x = (120.0, 1500.0);
+        let y = (10.0, 360.0);
+        let have = Vertical::new()
+            .x_range(x.0, x.1)
+            .y_range(y.0, y.1)
+            .lines(5)
+            .tags()
+            .to_string();
 
         let want = format!("<svg xmlns=\"http://www.w3.org/2000/svg\">\n\
             <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
@@ -159,7 +214,6 @@ mod tests {
             1155, 10, 1155, 360,
             1500, 10, 1500, 360);
 
-        let have = vertical.tags.to_string();
         assert_eq!(want, have);
     }
 }
