@@ -70,7 +70,7 @@ impl Vertical {
         Ok(())
     }
 
-    fn coordinates(&self) -> Result<Vec<f32>, ()> {
+    pub(crate) fn coordinates(&self) -> Result<Vec<f32>, ()> {
         let segment = self.delta()?;
 
         let mut lines = Vec::new();
