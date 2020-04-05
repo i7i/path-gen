@@ -99,8 +99,9 @@ mod tests {
         let want = vec![10.0, 97.5, 185.0, 272.5, 360.0];
         assert_eq!(want, have);
     }
+
     #[test]
-    fn generates_svg_tags() {
+    fn generates_svg_path() {
         let points = (Point::new(120.0, 10.0), Point::new(1500.0, 360.0));
         let mut horiz = Horizontal::new(points, 5);
 
@@ -112,7 +113,17 @@ mod tests {
         let tmp_document = tmp_document.add(path1);
 
         let path2 = horiz.get_path(185.0).unwrap();
-        let _tmp_document = tmp_document.add(path2);
+        let tmp_document = tmp_document.add(path2);
+
+        let path3 = horiz.get_path(272.5).unwrap();
+        let tmp_document = tmp_document.add(path3);
+
+        let path4 = horiz.get_path(360.0).unwrap();
+        let tmp_document = tmp_document.add(path4);
+
+        horiz.tags = tmp_document;
+        let have = horiz.tags.to_string();
+
         let want = format!("<svg xmlns=\"http://www.w3.org/2000/svg\">\n\
             <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
             <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
@@ -125,7 +136,28 @@ mod tests {
             120, 185, 1500, 185,
             120, 272.5, 1500, 272.5,
             120, 360, 1500, 360);
+        assert_eq!(want, have);
+    }
+
+    #[test]
+    fn generates_svg_tags() {
+        let points = (Point::new(120.0, 10.0), Point::new(1500.0, 360.0));
+        let mut horiz = Horizontal::new(points, 5);
         horiz.get_tags().unwrap();
+
+        let want = format!("<svg xmlns=\"http://www.w3.org/2000/svg\">\n\
+            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
+            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
+            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
+            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
+            <path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>\n\
+            </svg>",
+            120, 10, 1500, 10,
+            120, 97.5, 1500, 97.5,
+            120, 185, 1500, 185,
+            120, 272.5, 1500, 272.5,
+            120, 360, 1500, 360);
+
         let have = horiz.tags.to_string();
         assert_eq!(want, have);
     }
