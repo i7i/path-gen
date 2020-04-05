@@ -38,15 +38,15 @@ impl Horizontal {
         self
     }
 
-    pub(crate) fn tags<'a>(&'a mut self) -> &'a mut Horizontal {
-        let y_coordinates = self.coordinates().unwrap();
+    pub(crate) fn tags<'a>(&'a mut self) -> Result<&'a mut Horizontal> {
+        let y_coordinates = self.coordinates()?;
         let mut tmp_document = SvgDocument::new();
         for y in y_coordinates {
-            let path = self.get_path(y).unwrap();
+            let path = self.get_path(y)?;
             tmp_document = tmp_document.add(path);
         }
         self.tags = tmp_document;
-        self
+        Ok(self)
     }
 
     pub(crate) fn to_string(&self) -> String {
@@ -64,13 +64,14 @@ impl Horizontal {
                 path: path.into(),
             })?;
         } else {
-            writeln!(io::stdout(), "{}", self.to_string()).unwrap();
+            writeln!(io::stdout(), "{}", self.to_string())
+                .map_err(|io_error| Error::StdIoError { io_error })?;
         }
 
         Ok(())
     }
 
-    pub(crate) fn coordinates(&self) -> Result<Vec<f32>, ()> {
+    pub(crate) fn coordinates(&self) -> Result<Vec<f32>> {
         let segment = self.delta()?;
 
         let mut lines = Vec::new();
@@ -82,8 +83,17 @@ impl Horizontal {
         Ok(lines)
     }
 
-    fn delta(&self) -> Result<f32, ()> {
-        Ok((self.y_range[1] - self.y_range[0]).abs() / (self.lines - 1) as f32)
+    fn delta(&self) -> Result<f32> {
+        let numerator = (self.y_range[1] - self.y_range[0]).abs();
+        let denominator = match self.lines.checked_sub(1) {
+            Some(difference) => match difference {
+                0 | 1 => return Err(Error::LineNumber),
+                _ => difference,
+            },
+            None => return Err(Error::LineNumber),
+        };
+
+        Ok(numerator / denominator as f32)
     }
 
     fn get_path(&self, y: f32) -> Result<SvgPath> {
@@ -104,7 +114,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn segment_width_btwn_3_lines() {
+    fn segment_width_btwn_3_lines() -> Result<()> {
         let x = (120.0, 1500.0);
         let y = (10.0, 360.0);
 
@@ -112,16 +122,16 @@ mod tests {
             .x_range(x.0, x.1)
             .y_range(y.0, y.1)
             .lines(3)
-            .delta()
-            .unwrap();
+            .delta()?;
 
         let want = 175.0;
 
         assert_eq!(want, have);
+        Ok(())
     }
 
     #[test]
-    fn segment_width_btwn_5_lines() {
+    fn segment_width_btwn_5_lines() -> Result<()> {
         let x = (120.0, 1500.0);
         let y = (10.0, 360.0);
 
@@ -129,16 +139,16 @@ mod tests {
             .x_range(x.0, x.1)
             .y_range(y.0, y.1)
             .lines(5)
-            .delta()
-            .unwrap();
+            .delta()?;
 
         let want = 87.5;
 
         assert_eq!(want, have);
+        Ok(())
     }
 
     #[test]
-    fn y_coords_of_3_lines() {
+    fn y_coords_of_3_lines() -> Result<()> {
         let x = (120.0, 1500.0);
         let y = (10.0, 360.0);
 
@@ -146,16 +156,16 @@ mod tests {
             .x_range(x.0, x.1)
             .y_range(y.0, y.1)
             .lines(3)
-            .coordinates()
-            .unwrap();
+            .coordinates()?;
 
         let want = vec![10.0, 185.0, 360.0];
 
         assert_eq!(want, have);
+        Ok(())
     }
 
     #[test]
-    fn y_coords_of_5_lines() {
+    fn y_coords_of_5_lines() -> Result<()> {
         let x = (120.0, 1500.0);
         let y = (10.0, 360.0);
 
@@ -163,15 +173,15 @@ mod tests {
             .x_range(x.0, x.1)
             .y_range(y.0, y.1)
             .lines(5)
-            .coordinates()
-            .unwrap();
+            .coordinates()?;
 
         let want = vec![10.0, 97.5, 185.0, 272.5, 360.0];
         assert_eq!(want, have);
+        Ok(())
     }
 
     #[test]
-    fn generates_svg_path() {
+    fn generates_svg_path() -> Result<()> {
         let x = (120.0, 1500.0);
         let y = (10.0, 360.0);
 
@@ -179,25 +189,25 @@ mod tests {
             .x_range(x.0, x.1)
             .y_range(y.0, y.1)
             .lines(5)
-            .get_path(10.0)
-            .unwrap()
+            .get_path(10.0)?
             .to_string();
 
         let want = format!("<path d=\"M{},{} L{},{}\" opacity=\"1\" stroke=\"#BFEFF2\" stroke-width=\"1\" zIndex=\"1\"/>",
             120, 10, 1500, 10);
 
         assert_eq!(want, have);
+        Ok(())
     }
 
     #[test]
-    fn generates_svg_tags() {
+    fn generates_svg_tags() -> Result<()> {
         let x = (120.0, 1500.0);
         let y = (10.0, 360.0);
         let have = Horizontal::new()
             .x_range(x.0, x.1)
             .y_range(y.0, y.1)
             .lines(5)
-            .tags()
+            .tags()?
             .to_string();
 
         let want = format!("<svg xmlns=\"http://www.w3.org/2000/svg\">\n\
@@ -214,5 +224,6 @@ mod tests {
             120, 360, 1500, 360);
 
         assert_eq!(want, have);
+        Ok(())
     }
 }
